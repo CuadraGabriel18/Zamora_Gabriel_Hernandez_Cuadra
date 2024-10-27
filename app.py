@@ -13,7 +13,7 @@ from io import BytesIO
 app = Flask(__name__)
 
 # Configure upload folder
-UPLOAD_FOLDER = 'static/uploads'
+UPLOAD_FOLDER = 'img'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
