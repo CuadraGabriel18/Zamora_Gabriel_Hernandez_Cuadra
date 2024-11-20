@@ -1,57 +1,177 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Análisis Facial</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <title>Flask - Random Forest</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+            line-height: 1.6;
+        }
+        h1 {
+            text-align: center;
+            color: #4CAF50;
+            margin-top: 30px;
+            font-size: 2.5rem;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 40px;
+        }
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        .button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+        .button:active {
+            background-color: #388e3c;
+            transform: translateY(2px);
+        }
+        .output {
+            width: 90%;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .output h2 {
+            color: #333;
+        }
+        .output table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .output table, .output th, .output td {
+            border: 1px solid #ddd;
+        }
+        .output th, .output td {
+            padding: 12px;
+            text-align: left;
+        }
+        .output th {
+            background-color: #f9f9f9;
+        }
+        .output img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Diseño responsivo */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+            .button {
+                width: 80%;
+                font-size: 1rem;
+                padding: 12px 25px;
+            }
+        }
+    </style>
 </head>
-<body class="bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 min-h-screen flex items-center justify-center">
-    <div class="container max-w-3xl mx-auto p-8 bg-white rounded-lg shadow-lg">
-        <h1 class="text-4xl font-bold text-center text-indigo-700 mb-6">Análisis Facial</h1>
-        <form id="uploadForm" class="space-y-4">
-            <label class="flex flex-col items-center w-full h-40 bg-gray-200 border-4 border-gray-300 border-dashed rounded-lg">
-                <span class="text-4xl">📸</span>
-                <p class="mt-2 text-gray-600">Sube tu imagen aquí</p>
-                <input type="file" name="file" class="hidden" accept=".jpg,.jpeg,.png" />
-            </label>
-            <select name="transform" class="w-full p-3 rounded border border-gray-300">
-                <option value="original">Original</option>
-                <option value="horizontal_flip">Volteo Horizontal</option>
-                <option value="vertical_flip">Volteo Vertical</option>
-                <option value="brightness">Aumentar Brillo</option>
-            </select>
-            <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded font-semibold">Analizar Imagen</button>
-        </form>
-        <div id="results" class="hidden mt-6">
-            <h2 class="text-xl font-semibold text-indigo-700 text-center">Resultados del Análisis</h2>
-            <img id="resultImage" class="mt-4 mx-auto rounded-lg border border-gray-300 shadow-md" src="" alt="Resultado">
-        </div>
-        <div id="error" class="hidden mt-4 p-4 bg-red-600 text-white rounded text-center"></div>
+<body>
+
+    <h1>Random Forest</h1>
+
+    <!-- Contenedor de botones -->
+    <div class="container">
+        <button class="button" onclick="performAction('load_data')">Cargar y Visualizar Datos</button>
+        <button class="button" onclick="performAction('length_features')">Ver Longitud y Características</button>
+        <button class="button" onclick="performAction('split_scale')">Dividir y Escalar Datos</button>
+        <button class="button" onclick="performAction('train_tree')">Entrenar Árbol de Decisión</button>
+        <button class="button" onclick="visualizeTree()">Visualizar Árbol de Decisión</button>
+        <button class="button" onclick="performAction('train')">Entrenar Modelo Completo</button>
     </div>
+
+    <!-- Sección para mostrar resultados -->
+    <div class="output" id="output"></div>
+
     <script>
-        $('#uploadForm').on('submit', function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            $('#results').addClass('hidden');
-            $('#error').addClass('hidden');
-            $.ajax({
-                url: '/analyze',
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    $('#results').removeClass('hidden');
-                    $('#resultImage').attr('src', 'data:image/png;base64,' + response.image);
-                },
-                error: function(xhr) {
-                    $('#error').removeClass('hidden').text(xhr.responseJSON?.error || 'Ocurrió un error');
-                }
-            });
-        });
+        function performAction(action) {
+            let url = `/action/${action}`;  // Corregido: Agregar comillas para crear el string correctamente
+            let method = 'GET';
+
+            // Si la acción es 'train', se necesita un POST
+            if (action === 'train') {
+                url = '/train'; // Cambiar la URL para la acción POST
+                method = 'POST';
+            }
+
+            fetch(url, { method: method })
+                .then(response => response.json())
+                .then(data => {
+                    let outputDiv = document.getElementById("output");
+                    outputDiv.innerHTML = "";  // Limpiar resultados previos
+
+                    // Mostrar los resultados según la acción
+                    if (action === 'load_data') {
+                        outputDiv.innerHTML = "<h2>Primeras filas del Dataset:</h2>" + data.data;
+                    } else if (action === 'length_features') {
+                        outputDiv.innerHTML = `<h2>Longitud y Características del Dataset:</h2>
+                                               <p>Longitud del conjunto: ${data.length}</p>
+                                               <p>Número de características: ${data.features}</p>`;
+                    } else if (action === 'split_scale') {
+                        outputDiv.innerHTML = "<h2>Datos Escalados:</h2>" + data.scaled_data;
+                    } else if (action === 'train_tree') {
+                        outputDiv.innerHTML = `<h2>Modelo Entrenado:</h2>
+                                               <p>F1 Score en Train Set: ${data.f1_train}</p>
+                                               <p>F1 Score en Validation Set: ${data.f1_val}</p>`;
+                    } else if (action === 'train') {
+                        outputDiv.innerHTML = `<h2>Resultados del Modelo Completo:</h2>
+                                               <p>Mean Squared Error: ${data.mse}</p>
+                                               <p>R2 Score: ${data.r2}</p>
+                                               <h3>Importancia de las Características:</h3>
+                                               <table>
+                                                   <tr><th>Característica</th><th>Importancia</th></tr>`;
+                        data.feature_importance.forEach(item => {
+                            outputDiv.innerHTML += `<tr><td>${item.caracteristica}</td><td>${item.importancia}</td></tr>`;  // Corregido: Agregar comillas
+                        });
+                        outputDiv.innerHTML += "</table>";
+
+                        // Mostrar imagen del gráfico
+                        outputDiv.innerHTML += "<h3>Gráfico de Predicciones vs Valores Reales:</h3>";
+                        outputDiv.innerHTML += `<img src="data:image/png;base64,${data.image}" alt="Gráfico">`;  // Corregido: Agregar comillas
+                    }
+                })
+                .catch(error => {
+                    console.error("Error al obtener los datos:", error);
+                });
+        }
     </script>
+    <script>
+        function visualizeTree() {
+            fetch('/train_tree_visualize', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    let outputDiv = document.getElementById("output");
+                    let imgTag = `<img src="data:image/png;base64,${data.image}" alt="Árbol de Decisión">`;
+                    outputDiv.innerHTML = `<p>${data.message}</p>` + imgTag;
+                })
+                .catch(err => console.error(err));
+        }
+    </script>
+
 </body>
 </html>
 
